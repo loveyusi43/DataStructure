@@ -1,5 +1,7 @@
 #include <iostream>
 #include <cstdlib>
+#include <unistd.h>
+#include <ctime>
 
 #include "sort.hpp"
 
@@ -20,6 +22,7 @@ int main(void) {
     int *array = GetRandomArray(LEN);
     std::cout << "排序前: ";
     PrintArray(array, LEN);
+    Greater<int> g;
     Sort(array, LEN);
     std::cout << "排序后: ";
     PrintArray(array, LEN);
@@ -36,7 +39,8 @@ void Sort(int *arr, int len, Compare comp) {
     //ShellSort(arr, len, comp);
     //SelectSort(arr, len, comp);
     //HeapSort(arr, len, comp);
-    BubbleSort(arr, len, comp);
+    //BubbleSort(arr, len, comp);
+    QuickSort(arr, len, comp);
 }
 
 int* GetRandomArray(int len) {

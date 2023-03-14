@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <utility>
+#include <stack>
 
 
 template<class T = int>
@@ -20,6 +21,7 @@ struct Greater{
     }
 };
 
+/**********************************************************************************************/
 
 // 核心思想，把一个数插入一段有序的区间
 // 时间复杂度：等差数列 O(N^2) 最好：接近有序 最坏：逆序
@@ -46,6 +48,7 @@ void InsertSort(T *a, int n, Compare comp = Compare()) {
     }
 }
 
+/*********************************************************************************************/
 
 // 时间复杂度：最好：O(N)
 // 以插入排序位基础，核心思想同插入排序："插入"
@@ -79,6 +82,7 @@ void ShellSort(T *a, int len, Compare comp = Compare()) {
     }
 }
 
+/****************************************************************************************************/
 
 // 时间复杂度：O(N)  N N-2 N-4 N-6 ... ; 最好的情况也还是O(N)
 // 整体而言最差的排序
@@ -110,6 +114,7 @@ void SelectSort(T *a, int len, Compare comp = Compare()) {
     }
 }
 
+/*****************************************************************************************************/
 
 template<class T, class Compare>
 void AdjustDown(T *a, int n/*该参数不是数组的长度，而是要调整的边界*/, int parents, Compare comp) {
@@ -146,6 +151,7 @@ void HeapSort(T *a, int len, Compare comp = Compare()) {
     }
 }
 
+/*******************************************************************************************/
 
 // 时间复杂度：标准的O(N^2) 在最好的情况下优化版本可以达到O(N)
 template<class T, class Compare = Less<T>>
@@ -165,6 +171,211 @@ void BubbleSort(T *a, int len, Compare comp = Compare()) {
             break;
         }
     }
+}
+
+/**********************************************************************************/
+
+template<class T>
+int GetMidIndex(T *a, int left, int right) {
+    assert(left < right);
+    assert(a);
+    int mid = left + ((right-left) >> 1);
+    assert(mid >= left && mid <= right);
+
+    if (a[left] < a[right]) {
+        if (a[right] < a[mid]) {
+            return right;
+        } else if (a[mid] < a[left]) {
+            return left;
+        }
+        return mid;
+    } else {
+        if (a[mid] > a[left]) {
+            return left;
+        } else if (a[right] > a[mid]) {
+            return right;
+        }
+        return mid;
+    }
+}
+
+// 单趟的时间复杂度为：O(N)
+template<class T, class Compare>
+int PartitionHoare(T *a, int left, int right, Compare comp) {
+    // 默认排升序
+    assert(a);
+    assert(left <= right);
+
+    // 三数取中可以极大的优化有序或接近有序的情况
+    int mid = GetMidIndex(a, left, right);
+    std::swap(a[mid], a[left]);
+
+    int key_index = left; // 选最左边的值做key
+    // 走完一趟的效果是key右边的一定比key小,左边的一定比key大
+    while (left < right) {
+        // 右边先走，找小于key的值; 分为两种情况
+        // 1. L <- R,最后一次右边找不到小的和左边相遇，但在上一次交换后此时相遇的值一定比key要小
+        // 另外还要注意有大量重复数据的情况一不小心会导致死循环
+        // 而在接近有序时可能会导致越界
+        while (left < right && (comp(a[key_index], a[right]) || a[key_index] == a[right])) {
+            --right;
+        }
+
+        // 2. L -> R, 右边在走N(N > 0)步后找到比key小的值，但左边找不到比key大的值,此时相遇处的值也是小于key的值
+        // 综上两点选定key值后让另一边先走一定可以满足条件
+        // 左边后走，找大于key的值
+        while (left < right && (comp(a[left], a[key_index]) || a[key_index] == a[left])) {
+            ++left;
+        }
+        std::swap(a[left], a[right]);
+    }
+    std::swap(a[right], a[key_index]);
+    return right;
+}
+
+
+template<class T, class Compare>
+int PartitionPit(T *a, int left, int right, Compare comp) {
+    assert(a);
+    assert(left <= right);
+
+    int mid = GetMidIndex(a, left, right);
+    std::swap(a[mid], a[left]);
+
+    T key = a[left];
+    int pit_index = left;
+    while (left < right) {
+        // 右边先走，找小, 大于等于时跳过
+        while (left < right && (comp(key, a[right]) || key == a[right])) {
+            --right;
+        }
+        a[pit_index] = a[right];
+        // right = pit_index; 由于疏忽导致的bug
+        pit_index = right;
+
+        // 左后走找大,小于等于时跳过
+        while (left < right && (comp(a[left], key) || a[left] == key)) {
+            ++left;
+        }
+        a[pit_index] = a[left];
+        pit_index = left;
+    }
+    a[pit_index] = key;
+    return pit_index;
+}
+
+
+template<class T, class Compare>
+int PartitionPointer(T *a, int left, int right, Compare comp) {
+    assert(left <= right);
+    assert(a);
+
+    int mid = GetMidIndex(a, left, right);
+    std::swap(a[mid], a[left]);
+
+    int key_index = left; // 如果选右边的值做key此时prev应初始化为-1，且在最后一次交换前要+1
+    int prev_index = left;
+    int cur_index = left+1;
+
+    while (cur_index <= right) {
+        // cur向右找小,cur < key
+        if (comp(a[cur_index], a[key_index]) && ++prev_index != cur_index) {
+            std::swap(a[prev_index], a[cur_index]);
+        }
+        ++cur_index; // cur无论什么情况都要向后走
+    }
+    std::swap(a[prev_index], a[key_index]);
+    return prev_index;
+}
+
+// 时间复杂度O(N*logN)，其递归展开图与二叉树极为相似，所以每一层可以看作遍历一次数组，即为N，二二叉树的高度为logN
+// 但是，排序数组如果是有序或接近有序，每次递归只会减少一个数据：N N-1 N-2 N-3 ... 1，此时时间复杂度为O(N^2)
+template<class T, class Compare>
+void QuickSortRecursion(T *a, int left, int right, Compare comp) {
+    assert(a);
+    if (left >= right) {
+        return;
+    }
+
+    if (right-left+1 < 10) {
+        InsertSort(a+left, right-left+1, comp);
+    } else {
+        //int key_index = PartitionPit(a, left, right, comp);
+        //int key_index = PartitionHoare(a, left, right, comp);
+        int key_index = PartitionPointer(a, left, right, comp);
+        QuickSortRecursion(a, left, key_index-1, comp);
+        QuickSortRecursion(a, key_index+1, right, comp);
+    }
+}
+
+
+template<class T, class Compare>
+void QuickSortLoop(T *a, int left, int right, Compare comp) {
+    std::stack<std::pair<int, int>> range;
+    range.push({left, right});
+
+    while (!range.empty()) {
+        int begin = range.top().first;
+        int end = range.top().second;
+        range.pop();
+        //int key_index = PartitionHoare(a, begin, end, comp);
+        //int key_index = PartitionPit(a, begin, end, comp);
+        int key_index = PartitionPointer(a, begin, end, comp);
+
+        // 接下来是模拟栈的关键步骤
+        if (begin < key_index-1) {
+            range.push({begin, key_index-1});
+        }
+        if (key_index+1 < end) {
+            range.push({key_index+1, end});
+        }
+    }
+}
+
+template<class T, class Compare = Less<T>>
+void QuickSort(T *a, int len, Compare comp = Compare()) {
+    //QuickSortRecursion(a, 0, len-1, comp);
+    QuickSortLoop(a, 0, len-1, comp);
+}
+
+
+/********************************************************************************************/
+
+template<class T, class Compare>
+void __MergeSortRecursiont(T *&a, int left, int right, T *&temp, Compare comp) {
+    if (left >= right) {
+        return;
+    }
+
+    int mid = left + ((right-left) >> 1);
+    int begin1 = left;
+    int end1 = mid;
+    int begin2 = mid+1;
+    int end2 = right;
+
+    int index = left;
+    while (begin1 < end1 && begin2 < end2) {
+        if (comp(a[begin1], a[begin2])) {
+            temp[index] = a[begin1++];
+        } else {
+            temp[index] = a[begin2++];
+        }
+        ++index;
+    }
+}
+
+template<class T, class Compare>
+void MergeSortRecursiont(T *&a, int left, int right, Compare comp) {
+    T *temp = new T[right-left+1];
+    assert(a);
+    assert(left <= right);
+    __MergeSortRecursiont(a, left, right, temp, comp);
+    delete []temp;
+}
+
+template<class T, class Compare = Less<T>>
+void MergeSort(T *&a, int len, Compare comp = Compare()) {
+    MergeSortRecursiont(a, 0, len-1, comp);
 }
 
 #endif

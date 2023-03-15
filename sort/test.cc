@@ -33,14 +33,16 @@ int main(void) {
 
 /********************************************************/
 
-template<class Compare = Less<int>>
+template<class Compare>
 void Sort(int *arr, int len, Compare comp) {
     //InsertSort(arr, len, comp);
     //ShellSort(arr, len, comp);
     //SelectSort(arr, len, comp);
     //HeapSort(arr, len, comp);
     //BubbleSort(arr, len, comp);
-    QuickSort(arr, len, comp);
+    //QuickSort(arr, len, comp);
+    //MergeSort(arr, len, comp);
+    CountSort(arr, len, comp);
 }
 
 int* GetRandomArray(int len) {

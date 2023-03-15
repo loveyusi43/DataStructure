@@ -4,11 +4,16 @@
 #include <cassert>
 #include <utility>
 #include <stack>
+#include <cstdio>
+#include <algorithm>
 
+/*
+    只有插入、冒泡、归并具有稳定性
+*/
 
 template<class T = int>
 struct Less{
-    bool operator()(T &x, T &y) {
+    bool operator()(const T &x, const T &y) {
         return x < y;
     }
 };
@@ -16,7 +21,7 @@ struct Less{
 
 template <class T = int>
 struct Greater{
-    bool operator()(T &x, T &y) {
+    bool operator()(const T &x, const T &y) {
         return x > y;
     }
 };
@@ -342,8 +347,8 @@ void QuickSort(T *a, int len, Compare comp = Compare()) {
 /********************************************************************************************/
 
 template<class T, class Compare>
-void __MergeSortRecursiont(T *&a, int left, int right, T *&temp, Compare comp) {
-    if (left >= right) {
+void __MergeSortRecursiont(T *a, int left, int right, T *temp, Compare comp) {
+    if (left >= right) { // 当区间不存在或区间内只有一个元素时认为该区间已经有序
         return;
     }
 
@@ -353,8 +358,11 @@ void __MergeSortRecursiont(T *&a, int left, int right, T *&temp, Compare comp) {
     int begin2 = mid+1;
     int end2 = right;
 
+    __MergeSortRecursiont(a, begin1, end1, temp, comp); // 让左区间有序
+    __MergeSortRecursiont(a, begin2, end2, temp, comp); // 让右区间有序
+
     int index = left;
-    while (begin1 < end1 && begin2 < end2) {
+    while (begin1 <= end1 && begin2 <= end2) {
         if (comp(a[begin1], a[begin2])) {
             temp[index] = a[begin1++];
         } else {
@@ -362,20 +370,177 @@ void __MergeSortRecursiont(T *&a, int left, int right, T *&temp, Compare comp) {
         }
         ++index;
     }
+    while (begin1 <= end1) {
+        temp[index++] = a[begin1++];
+    }
+    while (begin2 <= end2) {
+        temp[index++] = a[begin2++];
+    }
+    // 将归并好的数据拷贝会原数组
+    for (int i = left; i <= right; ++i) {
+        a[i] = temp[i];
+    }
 }
 
 template<class T, class Compare>
-void MergeSortRecursiont(T *&a, int left, int right, Compare comp) {
-    T *temp = new T[right-left+1];
+void MergeSortRecursiont(T *a, int len, Compare comp) {
+    T *temp = new T[len];
     assert(a);
-    assert(left <= right);
-    __MergeSortRecursiont(a, left, right, temp, comp);
+    //assert(left <= right);
+    __MergeSortRecursiont(a, 0, len-1, temp, comp);
     delete []temp;
 }
 
+
+template<class T, class Compare>
+void MergeSortLoop1(T *a, int len, Compare comp) {
+    T *temp = new T[len];
+    assert(a);
+
+    int gap = 1; // 每个被归并区间的最小值
+    while (gap < len) {
+        for (int i = 0; i < len; i += 2*gap) {
+            // 采用左闭右闭区间
+            int begin1 = i;
+            int end1 = i+gap-1;
+            int begin2 = i+gap;
+            int end2 = i+2*gap-1;
+            // 进行区间修正，除begin1之外都有可能越界
+            if (end2 >= len) {
+                end2 = len-1;
+            }
+            if (begin2 >= len) {
+                //begin2 = len;
+                end2 = begin2-1;
+                //printf("[%d, %d]", begin2, end2);
+                assert(begin2 > end2); // 该区间不存在，对于不存在区间不是要进行区间修正，而是要确保不会让该区间进入下面的循环
+            }
+            if (end1 >= len) {
+                end1 = len-1;
+                assert(begin2 > end2); // 第二个归并区间不存在
+            }
+
+            int index = begin1;
+            while (begin1 <= end1 && begin2 <= end2) {
+                if (comp(a[begin1], a[begin2])) {
+                    temp[index] = a[begin1++];
+                } else {
+                    temp[index] = a[begin2++];
+                }
+                ++index;
+            }
+            while (begin1 <= end1) {
+                temp[index++] = a[begin1++];
+            }
+            while (begin2 <= end2) {
+                temp[index++] = a[begin2++];
+            }
+        }
+
+        // 所有小区间归并完后再拷贝
+        // 这种方式要求在循环体内不能有任何的跳出循环行为，否则可能会导致越界或随机值
+        for (int i = 0; i < len; ++i) {
+            a[i] = temp[i];
+        }
+
+        gap *= 2;
+    }
+
+    delete []temp;
+}
+
+
+template<class T, class Compare>
+void MergeSortLoop2(T *a, int len, Compare comp) {
+    T *temp = new T[len];
+    int gap = 1;
+    while (gap < len) {
+        // gap的含义是每次归并的两个小分组的元素个数，因此每次循环应跳过2个gap
+        for (int i = 0; i < len; i += 2*gap) {
+            int begin1 = i;
+            int end1 = i+gap-1;
+            int begin2 = i+gap;
+            int end2 = i+2*gap-1;
+
+            if (end1 >= len) {
+                break;
+            }
+            if (end2 >= len) {
+                end2 = len-1;
+            }
+
+            int index = begin1;
+            while (begin1 <= end1 && begin2 <= end2) {
+                if (comp(a[begin1], a[begin2])) {
+                    temp[index] = a[begin1++];
+                } else {
+                    temp[index] = a[begin2++];
+                }
+                ++index;
+            }
+            while (begin1 <= end1) {
+                temp[index++] = a[begin1++];
+            }
+            while (begin2 <= end2) {
+                temp[index++] = a[begin2++];
+            }
+
+            for (int j = i; j <= end2; ++j) {
+                a[j] = temp[j];
+            }
+        }
+
+        gap *= 2;
+    }
+
+    delete []temp;
+}
+
+
+// 时间复杂度：O(N*logN)
+// 空间复杂度：O(N)
 template<class T, class Compare = Less<T>>
-void MergeSort(T *&a, int len, Compare comp = Compare()) {
-    MergeSortRecursiont(a, 0, len-1, comp);
+void MergeSort(T *a, int len, Compare comp = Compare()) {
+    //MergeSortRecursiont(a, len, comp);
+    MergeSortLoop2(a, len, comp);
+}
+
+
+/************************************************************************************************/
+
+// 限制很多，能发挥作用的场景不多，但效率非常高
+template<class T, class Compare = Less<T>>
+void CountSort(T *a, int len, Compare comp = Compare()) {
+    T max_element = a[0];
+    T min_element = a[0];
+    // 采用相对映射，遍历找出最大值和最小值
+    for (int i = 0; i < len; ++i) {
+        if (a[i] > max_element) {
+            max_element = a[i];
+        }
+        if (a[i] < min_element) {
+            min_element = a[i];
+        }
+    }
+
+    const int width = max_element-min_element+1;
+    T *temp = new T[width] {T()};
+    for (int i = 0; i < len; ++i) {
+        temp[a[i]-min_element]++;
+    }
+
+    int index = 0;
+    for (int i = 0; i < width; ++i) {
+        while (temp[i]--) {
+            a[index++] = i+min_element;
+        }
+    }
+
+    if (comp(1, 0)) {
+        std::reverse(a, a+len);
+    }
+
+    delete []temp;
 }
 
 #endif

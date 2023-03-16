@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <cassert>
 #include <initializer_list>
+#include <utility>
+#include <iostream>
 
 #include "linear_list.hpp"
 #include "common.hpp"
@@ -19,16 +21,17 @@ class ArrayList : public LinearList<T> {
     }
 
 public:
-    explicit ArrayList(int InitialCapacity = 1) :array_length_(InitialCapacity), list_size_(0)
+    explicit ArrayList(int InitialCapacity = 1)
+	    :element_(new T[InitialCapacity]),array_length_(InitialCapacity), list_size_(0)
     {
         assert(InitialCapacity > 0);
-        element_ = new T[array_length_];
     }
 
     ArrayList(const ArrayList<T>& theList) :array_length_(theList.array_length_), list_size_(theList.list_size_) {
         element_ = new T[array_length_];
         // 原生类型的原生指针可以充当迭代器
         std::copy(theList.element_, theList.element_+list_size_, element_);
+        std::cout << "深拷贝\n";
     }
 
     ArrayList(std::initializer_list<T> list) :ArrayList()
@@ -46,13 +49,53 @@ public:
         }
     }
 
-    ArrayList<T>& operator=(const ArrayList<T> theList)
+    ArrayList(ArrayList<T>&& theList) noexcept :element_(nullptr), array_length_(0),list_size_(0)
     {
-        ArrayList<T> temp;
-        Swap(temp, theList);
-        return temp;
+        element_ = theList.element_;
+        array_length_ = theList.array_length_;
+        list_size_ = theList.list_size_;
+        theList.element_ = nullptr;
+        std::cout << "移动构造\n";
     }
 
+    // 移动赋值
+    ArrayList<T>& operator=(ArrayList<T>&& theList) noexcept
+    {
+        if (this != &theList)
+        {
+            delete[]element_;
+            element_ = theList.element_;
+            array_length_ = theList.array_length_;
+            list_size_ = theList.list_size_;
+
+            theList.element_ = nullptr;
+        }
+        std::cout << "移动赋值\n";
+        return *this;
+    }
+
+    // 普通版本
+    ArrayList<T>& operator=(const ArrayList<T>& theList)
+    {
+	    if (&theList != this)
+	    {
+            if (theList.Size() > array_length_)
+            {
+                delete[]element_;
+                element_ = new T[theList.array_length_];
+                array_length_ = theList.array_length_;
+            }
+            list_size_ = theList.Size();
+            for (int i = 0; i < list_size_; ++i)
+            {
+                element_[i] = theList.element_[i];
+            }
+	    }
+        std::cout << "拷贝赋值\n";
+        return *this;
+    }
+
+    // 列表赋值
     ArrayList<T>& operator=(std::initializer_list<T> theList)
     {
         list_size_ = 0;
@@ -63,7 +106,11 @@ public:
         return *this;
     }
 
-    ~ArrayList() override {delete []element_;}
+    ~ArrayList() override
+    {
+        delete []element_;
+        //std::cout << "析构\n";
+    }
 
     void Swap(ArrayList<T>& theList)
     {

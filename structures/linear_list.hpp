@@ -6,7 +6,7 @@
 template<class T>
 class LinearList{
 public:
-    virtual ~LinearList() {};
+    virtual ~LinearList() = default;
 
     virtual bool Empty() const = 0;
 

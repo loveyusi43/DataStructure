@@ -27,6 +27,7 @@ public:
         assert(InitialCapacity > 0);
     }
 
+    // 副本构造器
     ArrayList(const ArrayList<T>& theList) :array_length_(theList.array_length_), list_size_(theList.list_size_) {
         element_ = new T[array_length_];
         // 原生类型的原生指针可以充当迭代器
@@ -49,12 +50,14 @@ public:
         }
     }
 
+    // 移动构造
     ArrayList(ArrayList<T>&& theList) noexcept :element_(nullptr), array_length_(0),list_size_(0)
     {
         element_ = theList.element_;
         array_length_ = theList.array_length_;
         list_size_ = theList.list_size_;
         theList.element_ = nullptr;
+        //Swap(theList);
         std::cout << "移动构造\n";
     }
 
@@ -74,7 +77,7 @@ public:
         return *this;
     }
 
-    // 普通版本
+    // 拷贝赋值
     ArrayList<T>& operator=(const ArrayList<T>& theList)
     {
 	    if (&theList != this)
@@ -92,6 +95,10 @@ public:
             }
 	    }
         std::cout << "拷贝赋值\n";
+
+        /*ArrayList<int> temp(theList);
+        Swap(temp);*/
+
         return *this;
     }
 

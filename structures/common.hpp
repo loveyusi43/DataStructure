@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 template<class T>
-void ChangeLength1D(T* &a, int OldLength, int NewLength) {
+static void ChangeLength1D(T* &a, int OldLength, int NewLength) {
     if (NewLength < 0) {
         throw std::range_error("new length must be >= 0");
     }

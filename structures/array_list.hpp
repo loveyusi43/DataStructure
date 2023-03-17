@@ -156,7 +156,7 @@ public:
         --list_size_;
     }
 
-    virtual void Insert(int theIndex, const T &theElement) override {
+    virtual void Insert(int theIndex, const T& theElement) override {
         if (theIndex < 0 || theIndex > list_size_) {
             throw std::range_error("index out of bounds");
             //assert(false);
@@ -172,6 +172,17 @@ public:
         }
         element_[theIndex] = theElement;
         ++list_size_;
+    }
+
+    template<class ...Args>
+    void Emplace(int theIndex, Args&&... args)
+    {
+        if (theIndex < 0 || theIndex > list_size_) {
+            //throw std::range_error("index out of bounds");
+            assert(false);
+        }
+        // 用逗号表达式是因为Insert没有返回值
+        int temp[] = { (Insert(theIndex++, std::forward<T>(args)), 0)... };
     }
 
     virtual void Output(std::ostream &out) const override {
